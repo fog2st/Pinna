@@ -18,15 +18,21 @@ Press **⇧⌘2** (or click the pin icon in the menu bar → Capture & Pin).
 - Drag to select an area, or press **Space** to pick a window. **Esc** cancels.
 - The screenshot is copied to the clipboard and pinned on screen, where you selected it.
 
+A pin stays on the desktop it was taken on, and floats above other windows until you turn off the switch in its top-right corner.
+
 On a pinned screenshot:
 
 | Action | |
 |---|---|
-| Move | Drag |
+| Move | Drag the screenshot or its title bar |
+| Resize | Drag an edge or corner (keeps proportions) |
 | Zoom | Scroll wheel / pinch, or ⌘= ⌘- ⌘0 |
+| Fit to screen | Green button |
+| Minimize | Yellow button |
+| Keep on top | Switch in the top-right corner |
 | Copy again | ⌘C |
 | Save as PNG | ⌘S |
-| Close | Esc, ⌘W, or double-click |
+| Close | Red button, Esc, ⌘W, or double-click |
 | More | Right-click |
 
 Close every pin at once from the menu bar icon.
