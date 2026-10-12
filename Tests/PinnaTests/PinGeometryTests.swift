@@ -29,27 +29,59 @@ struct PinGeometryTests {
         #expect(display == NSSize(width: 600, height: 300))
     }
 
-    @Test func freeResizeStretchesToTheWindow() {
+    @Test func freeResizeFitsWithoutStretching() {
         let display = geometry.display(resizingTo: NSSize(width: 312, height: 434), from: NSSize(width: 400, height: 200),
                                        axis: .corner, keepingProportions: false)
-        #expect(display == NSSize(width: 300, height: 400))
+        #expect(display == NSSize(width: 300, height: 150))
     }
 
-    @Test func freeResizeStaysWithinTheZoomLimits() {
-        let display = geometry.display(resizingTo: NSSize(width: 160, height: 34), from: NSSize(width: 400, height: 200),
-                                       axis: .corner, keepingProportions: false)
-        #expect(display.height == 20) // 0.1 × 200
+    @Test func freeWindowDimensionsStayIndependent() {
+        let current = NSSize(width: 412, height: 234)
+        for proposed in [NSSize(width: 812, height: current.height), NSSize(width: current.width, height: 434),
+                         NSSize(width: 312, height: 434)] {
+            #expect(geometry.constrainedWindowSize(proposed) == proposed)
+            let shown = geometry.display(fillingWindow: proposed)
+            let room = geometry.contentSize(window: proposed)
+            #expect(shown.width / shown.height == 2)
+            #expect(shown.width <= room.width && shown.height <= room.height)
+        }
     }
 
-    @Test func zoomKeepsAStretchedShape() {
+    @Test func freeResizeHasEnoughRoomAtTheMinimumZoom() {
+        let size = geometry.constrainedWindowSize(NSSize(width: 10, height: 10))
+        #expect(size == NSSize(width: 160, height: 54))
+        #expect(geometry.display(fillingWindow: size) == NSSize(width: 40, height: 20))
+    }
+
+    @Test func fittedImageIsCenteredBelowTheTitleBar() {
+        let bounds = NSRect(x: 10, y: 20, width: 312, height: 434)
+        let shown = geometry.imageFrame(in: bounds)
+        #expect(shown == NSRect(x: 16, y: 151, width: 300, height: 150))
+    }
+
+    @Test func fractionalSizesKeepTheExactAspectRatio() {
+        let portrait = PinGeometry(imageSize: NSSize(width: 317, height: 613), insets: geometry.insets, minWidth: 160)
+        let shown = portrait.imageFrame(in: NSRect(x: 0, y: 0, width: 401.5, height: 240.5))
+        #expect(abs(shown.width / shown.height - 317.0 / 613.0) < 0.000001)
+        #expect(shown.minY == 6)
+    }
+
+    @Test func oversizedWindowCapsImageZoomWithoutDistortion() {
+        #expect(geometry.display(fillingWindow: NSSize(width: 10012, height: 10034)) == NSSize(width: 3200, height: 1600))
+    }
+
+    @Test func imageStillFitsATinyContentView() {
+        #expect(geometry.imageFrame(in: NSRect(x: 0, y: 0, width: 100, height: 10)).size == .zero)
+    }
+
+    @Test func zoomRestoresTheImagesProportions() {
         let zoomed = geometry.zoomed(NSSize(width: 400, height: 400), by: 0.5)
-        #expect(zoomed == NSSize(width: 200, height: 200))
+        #expect(zoomed == NSSize(width: 200, height: 100))
     }
 
     @Test func zoomStopsAtTheLimitWithoutChangingShape() {
-        // Height is at 2×, width at 1×: zooming in 10× is held to 4×, where the height reaches 8×.
-        let zoomed = geometry.zoomed(NSSize(width: 400, height: 400), by: 10)
-        #expect(zoomed == NSSize(width: 1600, height: 1600))
+        let zoomed = geometry.zoomed(NSSize(width: 400, height: 200), by: 10)
+        #expect(zoomed == NSSize(width: 3200, height: 1600))
     }
 
     @Test func fittingKeepsTheShape() {

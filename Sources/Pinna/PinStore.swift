@@ -6,7 +6,7 @@ struct PinRecord: Codable, Equatable {
     var date: Date
     var origin: CGPoint
     var display: CGSize
-    var isStretched: Bool
+    var windowSize: CGSize?
     var keepsProportions: Bool
     var opacity: Double
     var keepsOnTop: Bool
@@ -17,7 +17,7 @@ struct PinRecord: Codable, Equatable {
         date = state.screenshot.date
         origin = state.origin
         display = state.display
-        isStretched = state.isStretched
+        windowSize = state.windowSize
         keepsProportions = state.keepsProportions
         opacity = state.opacity
         keepsOnTop = state.keepsOnTop
@@ -25,7 +25,7 @@ struct PinRecord: Codable, Equatable {
     }
 
     func state(with screenshot: Screenshot) -> PinState {
-        PinState(id: id, screenshot: screenshot, origin: origin, display: display, isStretched: isStretched,
+        PinState(id: id, screenshot: screenshot, origin: origin, display: display, windowSize: windowSize,
                  keepsProportions: keepsProportions, opacity: opacity, keepsOnTop: keepsOnTop, showsOnAllSpaces: showsOnAllSpaces)
     }
 }

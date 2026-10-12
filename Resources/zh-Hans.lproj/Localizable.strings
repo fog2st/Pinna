@@ -53,7 +53,7 @@
 "Zoom In" = "放大";
 "Zoom Out" = "缩小";
 "Actual Size" = "实际大小";
-"Keep Proportions" = "保持比例";
+"Keep Window Proportions" = "保持窗口比例";
 "Opacity" = "不透明度";
 "Show on All Spaces" = "在所有空间中显示";
 "Click Through" = "点按穿透";
@@ -61,8 +61,8 @@
 "Copied" = "已拷贝";
 "Copied Text" = "已拷贝文字";
 "No Text Found" = "未找到文字";
-"Keeps Proportions" = "保持比例";
-"Stretches Freely" = "自由拉伸";
+"Keeps Window Proportions" = "保持窗口比例";
+"Resizes Freely" = "自由调整窗口大小";
 "Click-through on. Turn it off from the menu bar icon." = "已开启点按穿透。可从菜单栏图标关闭。";
 "Opacity %lld%%" = "不透明度 %lld%%";
 "Pinna Settings" = "Pinna 设置";
@@ -77,9 +77,9 @@
 "Pinna couldn't use %@. Try a different shortcut." = "Pinna 无法使用 %@，请换一个快捷键。";
 "New Pins" = "新贴图";
 "When resizing:" = "调整大小时：";
-"Keep proportions" = "保持比例";
-"Stretch freely" = "自由拉伸";
-"Hold ⇧ while resizing to do the opposite. Each pin can also be switched from its right-click menu." = "调整大小时按住 ⇧ 可临时切换。也可以在每张贴图的右键菜单中单独切换。";
+"Keep window proportions" = "保持窗口比例";
+"Resize freely" = "自由调整窗口大小";
+"The image always keeps its proportions. Hold ⇧ while resizing to switch window resizing modes, or use the pin's right-click menu." = "图片始终保持原始比例。调整大小时按住 ⇧ 可临时切换窗口模式，也可以在贴图的右键菜单中切换。";
 "Window:" = "窗口：";
 "Show on all Spaces, including full-screen apps" = "在所有空间中显示，包括全屏 App";
 "General" = "通用";

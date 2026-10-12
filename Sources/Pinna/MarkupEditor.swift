@@ -39,7 +39,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
 
     // MARK: Coordinates
 
-    /// Screenshot points per view point, across and down; different if the pin is stretched.
+    /// Screenshot points per view point, using the fitted image's frame.
     private var scale: CGSize {
         CGSize(width: base.size.width / max(bounds.width, 1), height: base.size.height / max(bounds.height, 1))
     }

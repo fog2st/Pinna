@@ -55,10 +55,10 @@ final class SettingsWindow: NSWindow {
         rows.append([NSGridCell.emptyContentView, message])
         rows.append([NSGridCell.emptyContentView, restoreDefaults])
 
-        resizing.addItems(withTitles: [String(localized: "Keep proportions"), String(localized: "Stretch freely")])
+        resizing.addItems(withTitles: [String(localized: "Keep window proportions"), String(localized: "Resize freely")])
         resizing.target = self
         resizing.action = #selector(changeResizing)
-        let resizingNote = note(String(localized: "Hold ⇧ while resizing to do the opposite. Each pin can also be switched from its right-click menu."))
+        let resizingNote = note(String(localized: "The image always keeps its proportions. Hold ⇧ while resizing to switch window resizing modes, or use the pin's right-click menu."))
         for checkbox in [keepsOnTop, showsOnAllSpaces, launchAtLogin, restoresPins] {
             checkbox.target = self
             checkbox.action = #selector(toggleCheckbox)

@@ -18,7 +18,7 @@ enum Preferences {
         ])
     }
 
-    /// Whether resizing a new pin keeps the screenshot's proportions, or stretches it to any shape.
+    /// Whether a new pin's window keeps the screenshot's proportions, or resizes freely around a fitted image.
     static var keepsProportions: Bool {
         get { UserDefaults.standard.bool(forKey: Key.keepsProportions) }
         set { UserDefaults.standard.set(newValue, forKey: Key.keepsProportions) }

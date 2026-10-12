@@ -60,7 +60,7 @@ The screenshot is copied to the clipboard and pinned exactly where it was on scr
 
 ### Resizing
 
-By default a pin keeps the screenshot's proportions as you resize it. Choose **Stretch freely** in Settings to resize to any shape. Holding **⇧** while you drag does the opposite of the setting, and right-click › **Keep Proportions** switches one pin. Turning Keep Proportions back on returns a stretched screenshot to its own shape.
+The screenshot always keeps its original aspect ratio. By default the window follows those proportions as you resize it. Choose **Resize freely** in Settings to change the window's width and height independently: the image fits inside and stays centered, with empty space where needed. Holding **⇧** while you drag switches window resizing modes, and right-click › **Keep Window Proportions** switches one pin. Turning it back on fits the window around the image. A freely resized window keeps its shape when reopened or moved to another Space.
 
 ### Markup
 
@@ -105,7 +105,7 @@ A pin normally belongs to the desktop (Space) it was taken on. That keeps each d
 Choose **Settings…** from the menu bar menu.
 
 - **Shortcuts.** Any of these can work from any app: Capture & Pin, Capture Same Area Again, Pin Image from Clipboard, Hide or Show All Pins, and Reopen Closed Pin. Only Capture & Pin (⇧⌘2) has one to start with. Click a shortcut and press the keys you want. A shortcut needs ⌘, ⌥ or ⌃, unless it's an F-key. Click ⓧ to remove a shortcut.
-- **New pins.** Choose whether resizing keeps proportions, whether pins stay on top, and whether they show on all Spaces.
+- **New pins.** Choose whether the window resizes freely or keeps proportions, whether pins stay on top, and whether they show on all Spaces.
 - **Launch Pinna at login.** If macOS asks you to approve this, the **Allow in Login Items…** button opens the right place.
 - **Reopen pins from last time.** If this is on, the pins open when Pinna quits come back next time. They're kept in `~/Library/Application Support/Pinna/Pins`.
 

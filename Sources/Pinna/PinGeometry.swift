@@ -38,26 +38,36 @@ struct PinGeometry {
         return NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
-    /// Keeps each side within the zoom limits; a stretched screenshot can have a different scale across and down.
+    /// Fits within a display size while keeping the screenshot's proportions and zoom limits.
     func clamped(_ display: NSSize) -> NSSize {
-        NSSize(width: imageSize.width * clamp(display.width / imageSize.width),
-               height: imageSize.height * clamp(display.height / imageSize.height))
+        self.display(scale: min(display.width / imageSize.width, display.height / imageSize.height))
     }
 
-    /// The display size that best fills a window of `size`. Keeping proportions, the screenshot fits inside;
-    /// otherwise it's stretched to fill it.
-    func display(fillingWindow size: NSSize, keepingProportions: Bool) -> NSSize {
-        if keepingProportions {
-            let fitting = fittingScales(window: size)
-            return display(scale: min(fitting.width, fitting.height))
-        }
-        return clamped(contentSize(window: size))
+    /// The screenshot always fits inside the window without changing its proportions.
+    func display(fillingWindow size: NSSize) -> NSSize {
+        let fitting = fittingScales(window: size)
+        let scale = max(0, min(fitting.width, fitting.height, Self.scaleRange.upperBound))
+        return NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
+    /// A free resize only limits the minimum size; width and height remain independent.
+    func constrainedWindowSize(_ proposed: NSSize) -> NSSize {
+        let minimum = windowSize(display: display(scale: Self.scaleRange.lowerBound))
+        return NSSize(width: max(minimum.width, proposed.width), height: max(minimum.height, proposed.height))
+    }
+
+    /// Centers the proportionally fitted screenshot in the space below the title bar.
+    func imageFrame(in bounds: NSRect) -> NSRect {
+        let size = display(fillingWindow: bounds.size)
+        let area = NSRect(x: bounds.minX + insets.left, y: bounds.minY + insets.bottom,
+                          width: contentSize(window: bounds.size).width, height: contentSize(window: bounds.size).height)
+        return NSRect(x: area.midX - size.width / 2, y: area.midY - size.height / 2, width: size.width, height: size.height)
     }
 
     /// The display size for a window being resized to `proposed`, starting from `current`.
     func display(resizingTo proposed: NSSize, from current: NSSize, axis: ResizeAxis, keepingProportions: Bool) -> NSSize {
         guard keepingProportions else {
-            return clamped(contentSize(window: proposed))
+            return display(fillingWindow: proposed)
         }
         let fitting = fittingScales(window: proposed)
         let scale = current.width / imageSize.width
@@ -78,11 +88,7 @@ struct PinGeometry {
 
     /// `display` scaled by `factor`, keeping its shape, within the zoom limits.
     func zoomed(_ display: NSSize, by factor: CGFloat) -> NSSize {
-        // Limit the factor so neither side passes a limit, which would change the shape.
-        let low = Self.scaleRange.lowerBound, high = Self.scaleRange.upperBound
-        let scales = (display.width / imageSize.width, display.height / imageSize.height)
-        let factor = max(max(low / scales.0, low / scales.1), min(factor, min(high / scales.0, high / scales.1)))
-        return NSSize(width: display.width * factor, height: display.height * factor)
+        self.display(scale: min(display.width / imageSize.width, display.height / imageSize.height) * factor)
     }
 
     /// The largest display size, with the same shape, whose window fits in `bounds`.

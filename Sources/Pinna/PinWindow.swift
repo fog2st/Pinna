@@ -10,8 +10,8 @@ struct PinState {
     var origin: NSPoint
     /// The size the screenshot is shown at, in points.
     var display: NSSize
-    /// Whether the screenshot was stretched out of its proportions.
-    var isStretched = false
+    /// Saved separately because a freely resized window can have a different shape from its image.
+    var windowSize: NSSize?
     var keepsProportions = Preferences.keepsProportions
     var opacity: CGFloat = 1
     var keepsOnTop = Preferences.keepsOnTop
@@ -31,9 +31,6 @@ final class PinWindow: NSPanel, NSWindowDelegate {
 
     private var geometry: PinGeometry
     private var display: NSSize
-    private var isStretched: Bool {
-        didSet { pinView.isStretched = isStretched }
-    }
     private(set) var keepsProportions: Bool
     private(set) var keepsOnTop: Bool
     private(set) var showsOnAllSpaces: Bool
@@ -59,7 +56,6 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         id = state.id
         screenshot = state.screenshot
         display = state.display
-        isStretched = state.isStretched
         keepsProportions = state.keepsProportions
         keepsOnTop = state.keepsOnTop
         showsOnAllSpaces = state.showsOnAllSpaces
@@ -67,7 +63,6 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         let insets = NSEdgeInsets(top: titlebarHeight, left: 6, bottom: 6, right: 6)
         geometry = PinGeometry(imageSize: state.screenshot.size, insets: insets, minWidth: 0)
         pinView = PinView(screenshot: state.screenshot, insets: insets)
-        pinView.isStretched = state.isStretched
 
         super.init(contentRect: NSRect(origin: state.origin, size: .zero),
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView, .nonactivatingPanel],
@@ -77,6 +72,7 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         titlebarAppearsTransparent = true
         isOpaque = false
         backgroundColor = .clear
+        hasShadow = true
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         alphaValue = state.opacity
@@ -90,14 +86,17 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         addTitlebarAccessoryViewController(accessory)
         geometry.minWidth = (standardWindowButton(.zoomButton)?.frame.maxX ?? 70) + 12 + accessory.view.frame.width
 
-        let size = geometry.windowSize(display: display)
+        minSize = geometry.constrainedWindowSize(.zero)
+        // Older records only saved the displayed size, including any former stretching.
+        let size = geometry.constrainedWindowSize(state.windowSize ?? geometry.windowSize(display: state.display))
+        display = geometry.display(fillingWindow: size)
         let origin = imageFrame.map { NSPoint(x: $0.midX - size.width / 2, y: $0.minY - insets.bottom) } ?? state.origin
         setFrame(NSRect(origin: origin, size: size), display: false)
         addAccessibilityActions()
     }
 
     var state: PinState {
-        PinState(id: id, screenshot: screenshot, origin: frame.origin, display: display, isStretched: isStretched,
+        PinState(id: id, screenshot: screenshot, origin: frame.origin, display: display, windowSize: frame.size,
                  keepsProportions: keepsProportions, opacity: alphaValue, keepsOnTop: keepsOnTop, showsOnAllSpaces: showsOnAllSpaces)
     }
 
@@ -148,7 +147,7 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         add(String(localized: "Zoom In"), #selector(zoomIn), "=")
         add(String(localized: "Zoom Out"), #selector(zoomOut), "-")
         add(String(localized: "Actual Size"), #selector(actualSize), "0")
-        add(String(localized: "Keep Proportions"), #selector(toggleKeepsProportions))
+        add(String(localized: "Keep Window Proportions"), #selector(toggleKeepsProportions))
 
         let opacity = NSMenu()
         for percent in [100, 80, 60, 40, 20] {
@@ -280,13 +279,10 @@ final class PinWindow: NSPanel, NSWindowDelegate {
 
     @objc func toggleKeepsProportions() {
         keepsProportions.toggle()
-        if keepsProportions, isStretched {
-            // Back to the screenshot's own shape, no bigger than it was.
-            let scale = min(display.width / geometry.imageSize.width, display.height / geometry.imageSize.height)
-            isStretched = false
-            resize(to: geometry.display(scale: scale), around: NSPoint(x: frame.midX, y: frame.maxY))
+        if keepsProportions {
+            resize(to: display, around: NSPoint(x: frame.midX, y: frame.maxY))
         }
-        showToast(keepsProportions ? String(localized: "Keeps Proportions") : String(localized: "Stretches Freely"))
+        showToast(keepsProportions ? String(localized: "Keeps Window Proportions") : String(localized: "Resizes Freely"))
         onChange?(self)
     }
 
@@ -422,6 +418,7 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         analysis = nil
         analysisCallbacks = []
         geometry.imageSize = edited.size
+        minSize = geometry.constrainedWindowSize(.zero)
         pinView.screenshot = edited
         display = geometry.clamped(imageFrame.size)
         let size = geometry.windowSize(display: display)
@@ -436,7 +433,6 @@ final class PinWindow: NSPanel, NSWindowDelegate {
     @objc func zoomOut() { zoom(by: 0.8) }
 
     @objc func actualSize() {
-        isStretched = false
         resize(to: geometry.imageSize, around: NSPoint(x: frame.midX, y: frame.midY))
         showToast("100%")
     }
@@ -445,7 +441,14 @@ final class PinWindow: NSPanel, NSWindowDelegate {
     func zoom(by factor: CGFloat, around anchor: NSPoint? = nil) {
         let newDisplay = geometry.zoomed(display, by: factor)
         guard abs(newDisplay.width - display.width) > 0.01 else { return }
-        resize(to: newDisplay, around: anchor ?? NSPoint(x: frame.midX, y: frame.midY))
+        // Scale the available space as well, retaining any empty margins from a free resize.
+        let fitting = geometry.fittingScales(window: frame.size)
+        let appliedFactor = newDisplay.width / (geometry.imageSize.width * min(fitting.width, fitting.height))
+        let room = geometry.contentSize(window: frame.size)
+        let size = geometry.windowSize(display: NSSize(width: room.width * appliedFactor, height: room.height * appliedFactor))
+        display = newDisplay
+        setFrame(PinGeometry.frame(resizing: frame, to: size, around: anchor ?? NSPoint(x: frame.midX, y: frame.midY)), display: true)
+        onChange?(self)
         showToast("\(Int((newDisplay.width / geometry.imageSize.width * 100).rounded()))%")
     }
 
@@ -461,10 +464,10 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         // otherwise something else resized the window, like dragging an edge or the green button.
         let expected = geometry.windowSize(display: display)
         guard abs(frame.width - expected.width) > 1 || abs(frame.height - expected.height) > 1 else { return }
-        display = geometry.display(fillingWindow: frame.size, keepingProportions: !isStretched)
+        display = geometry.display(fillingWindow: frame.size)
     }
 
-    /// Keeps the screenshot's proportions while an edge or corner is dragged, unless set to stretch freely.
+    /// Optionally constrains the window's proportions. The screenshot itself always keeps its shape.
     /// Holding Shift does the opposite of the setting.
     func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
         // Work out which edge is being dragged from the first step and stick with it. Deciding at every
@@ -473,7 +476,7 @@ final class PinWindow: NSPanel, NSWindowDelegate {
         if inLiveResize { resizeAxis = axis }
 
         let proportional = keepsProportions != NSEvent.modifierFlags.contains(.shift)
-        isStretched = !proportional
+        guard proportional else { return geometry.constrainedWindowSize(frameSize) }
         let newDisplay = geometry.display(resizingTo: frameSize, from: display, axis: axis, keepingProportions: proportional)
         return geometry.windowSize(display: newDisplay)
     }

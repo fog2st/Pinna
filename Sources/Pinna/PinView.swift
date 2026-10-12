@@ -12,8 +12,6 @@ final class PinView: NSView, NSDraggingSource, ImageAnalysisOverlayViewDelegate 
             resizeSubviews(withOldSize: bounds.size)
         }
     }
-    /// Whether the screenshot fills the window whatever its proportions, rather than fitting inside it.
-    var isStretched = false
     private let insets: NSEdgeInsets
     private let screenshotView = ScreenshotView()
     private(set) var liveTextOverlay: ImageAnalysisOverlayView?
@@ -40,6 +38,9 @@ final class PinView: NSView, NSDraggingSource, ImageAnalysisOverlayViewDelegate 
         addSubview(background)
         screenshotView.image = screenshot.image
         addSubview(screenshotView)
+        let outline = PinOutlineView(frame: bounds)
+        outline.autoresizingMask = [.width, .height]
+        addSubview(outline)
         updateAccessibility()
     }
 
@@ -47,19 +48,9 @@ final class PinView: NSView, NSDraggingSource, ImageAnalysisOverlayViewDelegate 
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Where the screenshot is, in this view: filling the room inside the border, or fitted into it and centered.
+    /// The image and its interaction overlays share one proportionally fitted, centered frame.
     var screenshotFrame: NSRect {
-        let area = NSRect(x: insets.left, y: insets.bottom,
-                          width: bounds.width - insets.left - insets.right, height: bounds.height - insets.top - insets.bottom)
-        let imageSize = screenshot.size
-        let size: NSSize
-        if isStretched {
-            size = NSSize(width: max(0, area.width).rounded(), height: max(0, area.height).rounded())
-        } else {
-            let scale = max(0, min(area.width / imageSize.width, area.height / imageSize.height))
-            size = NSSize(width: (imageSize.width * scale).rounded(), height: (imageSize.height * scale).rounded())
-        }
-        return NSRect(x: (area.midX - size.width / 2).rounded(), y: area.maxY - size.height, width: size.width, height: size.height)
+        PinGeometry(imageSize: screenshot.size, insets: insets, minWidth: 0).imageFrame(in: bounds)
     }
 
     // Laid out here rather than in `layout()` so the screenshot moves in step with the window as it resizes.
@@ -195,6 +186,24 @@ final class PinView: NSView, NSDraggingSource, ImageAnalysisOverlayViewDelegate 
     }
 }
 
+/// A dark outer stroke and light inner stroke keep every edge visible over light and dark backgrounds.
+private final class PinOutlineView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let radius: CGFloat
+        if #available(macOS 26, *) { radius = 16 } else { radius = 10 }
+        let outer = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: radius, yRadius: radius)
+        outer.lineWidth = 2
+        NSColor.black.withAlphaComponent(0.55).setStroke()
+        outer.stroke()
+        let inner = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: radius - 1, yRadius: radius - 1)
+        inner.lineWidth = 1
+        NSColor.white.withAlphaComponent(0.75).setStroke()
+        inner.stroke()
+    }
+}
+
 /// Draws the screenshot with rounded corners, scaled to its frame.
 private final class ScreenshotView: NSView {
     var image: CGImage? {
@@ -205,7 +214,7 @@ private final class ScreenshotView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
-        layerContentsPlacement = .scaleAxesIndependently
+        layerContentsPlacement = .scaleProportionallyToFit
     }
 
     required init?(coder: NSCoder) {
@@ -217,7 +226,7 @@ private final class ScreenshotView: NSView {
     override func updateLayer() {
         guard let layer else { return }
         layer.contents = image
-        layer.contentsGravity = .resize
+        layer.contentsGravity = .resizeAspect
         layer.minificationFilter = .trilinear
         // Follows the window's corners, 6pt further in. macOS 26 rounds windows more.
         if #available(macOS 26, *) { layer.cornerRadius = 10 } else { layer.cornerRadius = 4 }

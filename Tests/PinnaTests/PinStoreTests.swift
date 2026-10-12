@@ -8,7 +8,7 @@ struct PinStoreTests {
 
     private func state(width: Int = 40) -> PinState {
         PinState(screenshot: Screenshot(image: makeImage(width: width, height: 20), scale: 2),
-                 origin: NSPoint(x: 10, y: 20), display: NSSize(width: 30, height: 40), isStretched: true,
+                 origin: NSPoint(x: 10, y: 20), display: NSSize(width: 30, height: 15), windowSize: NSSize(width: 312, height: 434),
                  keepsProportions: false, opacity: 0.6, keepsOnTop: false, showsOnAllSpaces: true)
     }
 
@@ -42,5 +42,20 @@ struct PinStoreTests {
 
     @Test func nothingSavedLoadsNothing() {
         #expect(PinStore(directory: directory).load().isEmpty)
+    }
+
+    @Test func olderRecordsWithStretchingStillLoad() throws {
+        let saved = state()
+        let data = try JSONEncoder().encode(PinRecord(saved))
+        var json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json.removeValue(forKey: "windowSize")
+        json["isStretched"] = true
+        json["display"] = [300, 400]
+        let legacy = try JSONSerialization.data(withJSONObject: json)
+        let loaded = try JSONDecoder().decode(PinRecord.self, from: legacy).state(with: saved.screenshot)
+        #expect(loaded.windowSize == nil)
+        #expect(loaded.display == NSSize(width: 300, height: 400))
+        #expect(loaded.id == saved.id)
+        #expect(loaded.keepsProportions == false)
     }
 }
