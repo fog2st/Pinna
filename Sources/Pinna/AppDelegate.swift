@@ -1,10 +1,11 @@
 import AppKit
-import Carbon.HIToolbox
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
+    private var captureItem: NSMenuItem?
     private var hotKey: HotKey?
+    private lazy var settingsWindow = makeSettingsWindow()
     private let capturer = Capturer()
     private var pins: [PinWindow] = []
 
@@ -14,10 +15,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = makeMenu()
         statusItem = item
 
-        // ⇧⌘2 — sits next to the system's ⇧⌘3/4/5 screenshot shortcuts.
-        hotKey = HotKey(keyCode: kVK_ANSI_2, modifiers: cmdKey | shiftKey) { [weak self] in
+        hotKey = HotKey { [weak self] in
             self?.captureAndPin()
         }
+        hotKey?.register(Shortcut.capture)
 
         // Shows the system prompt if the user hasn't decided yet, and lists Pinna in System Settings.
         if !CGPreflightScreenCaptureAccess() {
@@ -27,14 +28,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        let capture = NSMenuItem(title: "Capture & Pin", action: #selector(captureAndPin), keyEquivalent: "2")
-        capture.keyEquivalentModifierMask = [.command, .shift]
+        let capture = NSMenuItem(title: "Capture & Pin", action: #selector(captureAndPin), keyEquivalent: "")
         capture.target = self
         menu.addItem(capture)
+        captureItem = capture
+        showShortcutInMenu()
         menu.addItem(withTitle: "Close All Pins", action: #selector(closeAllPins), keyEquivalent: "").target = self
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Quit Pinna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return menu
+    }
+
+    private func showShortcutInMenu() {
+        captureItem?.keyEquivalent = Shortcut.capture.keyEquivalent
+        captureItem?.keyEquivalentModifierMask = Shortcut.capture.modifiers
+    }
+
+    private func makeSettingsWindow() -> SettingsWindow {
+        let window = SettingsWindow(shortcut: Shortcut.capture)
+        // Pause the shortcut while a new one is typed, so pressing it doesn't take a screenshot.
+        window.onRecordingChange = { [weak self] isRecording in
+            self?.hotKey?.register(isRecording ? nil : Shortcut.capture)
+        }
+        window.onChange = { [weak self] shortcut in
+            self?.setCaptureShortcut(shortcut) ?? false
+        }
+        return window
+    }
+
+    private func setCaptureShortcut(_ shortcut: Shortcut) -> Bool {
+        guard hotKey?.register(shortcut) == true else {
+            hotKey?.register(Shortcut.capture)
+            return false
+        }
+        Shortcut.capture = shortcut
+        showShortcutInMenu()
+        return true
+    }
+
+    @objc func showSettings() {
+        NSApp.activate()
+        settingsWindow.makeKeyAndOrderFront(nil)
     }
 
     @objc func captureAndPin() {

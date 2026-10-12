@@ -13,7 +13,7 @@ Requires macOS 14+ and Xcode (or the Swift toolchain).
 
 ## Use
 
-Press **⇧⌘2** (or click the pin icon in the menu bar → Capture & Pin).
+Press **⇧⌘2** (or click the pin icon in the menu bar → Capture & Pin). To use a different shortcut, choose **Settings…** from the menu bar icon, click the shortcut, and press the keys you want.
 
 - Drag to select an area, or press **Space** to pick a window. **Esc** cancels.
 - The screenshot is copied to the clipboard and pinned on screen, where you selected it.

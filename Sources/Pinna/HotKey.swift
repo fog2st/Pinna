@@ -8,18 +8,30 @@ final class HotKey {
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
 
-    init(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
+    init(action: @escaping () -> Void) {
         self.action = action
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), hotKeyHandler, 1, &eventType,
                             Unmanaged.passUnretained(self).toOpaque(), &handlerRef)
+    }
+
+    /// Replaces the shortcut, or just removes it if `shortcut` is nil. Returns false if it couldn't be registered.
+    @discardableResult
+    func register(_ shortcut: Shortcut?) -> Bool {
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+        guard let shortcut else { return true }
 
         let id = EventHotKeyID(signature: OSType(0x5049_4E41), id: 1) // 'PINA'
-        let status = RegisterEventHotKey(UInt32(keyCode), UInt32(modifiers), id, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let status = RegisterEventHotKey(UInt32(shortcut.keyCode), UInt32(shortcut.carbonModifiers), id,
+                                         GetApplicationEventTarget(), 0, &hotKeyRef)
         if status != noErr {
-            NSLog("Pinna: couldn't register the global shortcut (error \(status))")
+            NSLog("Pinna: couldn't register the global shortcut \(shortcut.description) (error \(status))")
         }
+        return status == noErr
     }
 
     fileprivate func fire() {
