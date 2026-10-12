@@ -13,20 +13,6 @@ struct Shortcut: Equatable, Codable {
 
     var modifiers: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifierFlags) }
 
-    /// Sits next to the system's ⇧⌘3/4/5 screenshot shortcuts.
-    static let `default` = Shortcut(keyCode: kVK_ANSI_2, modifiers: [.shift, .command])
-
-    /// The Capture & Pin shortcut, as saved in Settings.
-    static var capture: Shortcut {
-        get {
-            UserDefaults.standard.data(forKey: "CaptureShortcut")
-                .flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) } ?? .default
-        }
-        set {
-            UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: "CaptureShortcut")
-        }
-    }
-
     /// Plain keys would get in the way of typing, so a shortcut needs ⌘, ⌥ or ⌃, unless it's an F-key.
     var isValid: Bool {
         !modifiers.isDisjoint(with: [.command, .option, .control]) || Self.functionKeys.contains(keyCode)
@@ -105,5 +91,43 @@ struct Shortcut: Equatable, Codable {
         }
         guard status == noErr, length > 0 else { return nil }
         return String(utf16CodeUnits: characters, count: length)
+    }
+}
+
+/// Something Pinna can do from any app with a global shortcut.
+enum ShortcutAction: String, CaseIterable {
+    case capture, captureAgain, pinClipboard, togglePins, reopenClosed
+
+    var title: String {
+        switch self {
+        case .capture: String(localized: "Capture & Pin")
+        case .captureAgain: String(localized: "Capture Same Area Again")
+        case .pinClipboard: String(localized: "Pin Image from Clipboard")
+        case .togglePins: String(localized: "Hide or Show All Pins")
+        case .reopenClosed: String(localized: "Reopen Closed Pin")
+        }
+    }
+
+    /// Only Capture & Pin has one out of the box; it sits next to the system's ⇧⌘3/4/5 screenshot shortcuts.
+    var defaultShortcut: Shortcut? {
+        self == .capture ? Shortcut(keyCode: kVK_ANSI_2, modifiers: [.shift, .command]) : nil
+    }
+
+    // Capture & Pin keeps the key it had when it was the only shortcut.
+    private var defaultsKey: String { self == .capture ? "CaptureShortcut" : "Shortcut.\(rawValue)" }
+
+    /// The shortcut saved in Settings, or nil if there's none.
+    var shortcut: Shortcut? {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: defaultsKey) else { return defaultShortcut }
+            return try? JSONDecoder().decode(Shortcut.self, from: data) // empty data: removed on purpose
+        }
+        nonmutating set {
+            if newValue == defaultShortcut {
+                UserDefaults.standard.removeObject(forKey: defaultsKey)
+            } else {
+                UserDefaults.standard.set(newValue.flatMap { try? JSONEncoder().encode($0) } ?? Data(), forKey: defaultsKey)
+            }
+        }
     }
 }
